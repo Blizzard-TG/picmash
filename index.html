@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PictureMash Admin Version</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
+      color: #fff;
+      text-align: center;
+      padding: 2rem;
+      overflow-x: hidden;
+    }
+    h1 {
+      font-size: 2.5rem;
+      animation: fadeInDown 1s ease-in-out;
+    }
+    @keyframes fadeInDown {
+      0% { transform: translateY(-50px); opacity: 0; }
+      100% { transform: translateY(0); opacity: 1; }
+    }
+    .container {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      flex-wrap: wrap;
+      margin-top: 2rem;
+    }
+    .card {
+      background: #1e1e1e;
+      border-radius: 15px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+      padding: 1rem;
+      max-width: 300px;
+      transition: transform 0.4s ease, box-shadow 0.4s ease;
+    }
+    .card:hover {
+      transform: translateY(-10px);
+      box-shadow: 0 12px 25px rgba(0,0,0,0.7);
+    }
+    .card img {
+      width: 100%;
+      border-radius: 10px;
+      transition: transform 0.3s ease;
+    }
+    .card img:hover {
+      transform: scale(1.03);
+    }
+    .btn {
+      background: #00c6ff;
+      background: linear-gradient(to right, #0072ff, #00c6ff);
+      color: #fff;
+      border: none;
+      padding: 0.7rem 1.5rem;
+      border-radius: 30px;
+      font-size: 1rem;
+      margin: 1rem 0.4rem;
+      cursor: pointer;
+      transition: background 0.3s ease, transform 0.3s ease;
+    }
+    .btn:hover {
+      background: linear-gradient(to right, #00c6ff, #0072ff);
+      transform: scale(1.05);
+    }
+    input[type="file"], input[type="password"] {
+      margin: 1rem;
+      padding: 0.5rem;
+      border-radius: 5px;
+      border: none;
+      font-size: 1rem;
+    }
+    #leaderboard {
+      margin-top: 2rem;
+      background-color: #1f1f1f;
+      padding: 1.5rem;
+      border-radius: 12px;
+      animation: fadeInUp 0.8s ease-in-out;
+    }
+    @keyframes fadeInUp {
+      0% { transform: translateY(30px); opacity: 0; }
+      100% { transform: translateY(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Welcome to PictureMash 🎨</h1>
+  <p style="font-size: 1.2rem; animation: fadeInUp 1.2s ease-in-out;">Upload and vote for the most captivating picture. Your opinion shapes the leaderboard!</p>
+
+  <div id="loginSection">
+    <input type="password" id="adminPass" placeholder="Enter admin password">
+    <button class="btn" onclick="login()">Login as Admin</button>
+  </div>
+
+  <div id="uploadSection" style="display:none;">
+    <input type="file" accept="image/*" id="imageUpload">
+    <button class="btn" onclick="uploadImage()">Upload Picture (Admin Only)</button>
+  </div>
+
+  <div class="container">
+    <div class="card">
+      <img id="imgA" src="" alt="Picture A">
+      <button class="btn" onclick="vote('A')">Vote Picture A</button>
+    </div>
+    <div class="card">
+      <img id="imgB" src="" alt="Picture B">
+      <button class="btn" onclick="vote('B')">Vote Picture B</button>
+    </div>
+  </div>
+
+  <button class="btn" onclick="skip()">Skip</button>
+  <button class="btn" onclick="showLeaderboard()">Leaderboard</button>
+
+  <div id="leaderboard"></div>
+
+  <script>
+    const adminPassword = "admin123";
+    const images = JSON.parse(localStorage.getItem('pictureMashImages')) || [];
+    let currentA, currentB;
+    let voteCounter = 1;
+
+    function login() {
+      const input = document.getElementById('adminPass').value;
+      if (input === adminPassword) {
+        document.getElementById('uploadSection').style.display = 'block';
+        document.getElementById('loginSection').style.display = 'none';
+        alert("Welcome, Admin!");
+      } else {
+        alert("Incorrect password!");
+      }
+    }
+
+    function saveToStorage() {
+      localStorage.setItem('pictureMashImages', JSON.stringify(images));
+    }
+
+    function uploadImage() {
+      const fileInput = document.getElementById('imageUpload');
+      const file = fileInput.files[0];
+      if (!file) return alert('No file selected');
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const newImage = {
+          id: Date.now(),
+          src: e.target.result,
+          score: 1000,
+          votes: 0
+        };
+        images.push(newImage);
+        saveToStorage();
+        alert('Image uploaded!');
+        if (images.length >= 2) pickRandomPair();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function pickRandomPair() {
+      if (images.length < 2) return;
+      let a = Math.floor(Math.random() * images.length);
+      let b;
+      do {
+        b = Math.floor(Math.random() * images.length);
+      } while (a === b);
+      currentA = images[a];
+      currentB = images[b];
+      document.getElementById('imgA').src = currentA.src;
+      document.getElementById('imgB').src = currentB.src;
+    }
+
+    function vote(winner) {
+      const winnerObj = winner === 'A' ? currentA : currentB;
+      const loserObj = winner === 'A' ? currentB : currentA;
+      const k = 32;
+      const expectedWin = 1 / (1 + Math.pow(10, (loserObj.score - winnerObj.score) / 400));
+      winnerObj.score += Math.round(k * (1 - expectedWin));
+      loserObj.score -= Math.round(k * expectedWin);
+      winnerObj.votes += voteCounter;
+      voteCounter = voteCounter < 5000 ? voteCounter + 1 : 1;
+      saveToStorage();
+      skip();
+    }
+
+    function skip() {
+      document.getElementById('leaderboard').innerHTML = '';
+      pickRandomPair();
+    }
+
+    function showLeaderboard() {
+      if (images.length === 0) return;
+      const sorted = [...images].sort((a, b) => b.score - a.score);
+      const board = sorted.map(img => `
+        <li style='margin: 1rem 0;'>
+          <img src="${img.src}" width="150"><br>
+          Score: ${img.score} | Total Votes: ${img.votes}
+        </li>
+      `).join('');
+      document.getElementById('leaderboard').innerHTML = `<h2>Leaderboard</h2><ul style='list-style:none;'>${board}</ul>`;
+    }
+
+    // Auto-init
+    if (images.length >= 2) {
+      pickRandomPair();
+    }
+  </script>
+</body>
+</html>
